@@ -15,5 +15,5 @@ deploy:
   on:
     tags: true
     all_branches: true
-    repo: NiteoSoftware/grunt-niteo-cdbuild
+    repo: NiteoSoftware/grunt-niteo-awscloudformation
 

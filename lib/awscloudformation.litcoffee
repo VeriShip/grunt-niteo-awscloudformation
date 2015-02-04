@@ -1,3 +1,10 @@
+awscloudformation.litcoffee
+===========================
+
+*Note:* Any code blocks preceeded by a **Implementation** is actual code and not code examples.
+
+**Implementation**
+
 	Q = require 'q'
 	_ = require 'lodash'
 	colors = require 'colors'
@@ -7,8 +14,16 @@
 
 	module.exports = (grunt, niteoaws) ->
 
+In order to test the interaction with the [`niteoaws.cloudFormationProvider`](https://github.com/NiteoSoftware/niteoaws), we need to be abstract the object.  Therefore we need to allow that abstraction to be passed into the module.
+
+**Implementation**
+
 		if not niteoaws?
 			niteoaws = require 'niteoaws'
+
+We clear up namespaces here.
+
+**Implementation**
 
 		if not grunt.niteo?
 			grunt.niteo = { }
@@ -17,6 +32,11 @@
 		if not grunt.niteo.aws.cloudFormation?
 			grunt.niteo.aws.cloudFormation = { }
 
+createJSONStringArray
+---------------------
+
+**Implementation**
+
 		grunt.niteo.aws.cloudFormation.createJSONStringArray = (content) ->
 			result = [ ]
 			for item in S(content).strip('\r').split('\n')
@@ -24,6 +44,42 @@
 				result.push '\\n'
 
 			JSON.stringify result, null, 4
+
+processTemplate
+------------------------------------------------
+
+This method processes a template with path in `this.data.src` and stores the result into `grunt.option(this.data.key)`.
+
+- *src* (Required) The path of the template file.
+- *key* (Required) The key used with `grunt.option` to store the result for future use.
+
+**Example**
+
+```javascript
+grunt.initConfig({
+	processTemplate: {
+		src: '/Some/file/path.json'
+		key: 'someFilePathJsonKey'
+		data: {
+			SomeDataNeededWithinTheTemplate: "Hello There!"
+		}
+	}
+});
+```
+
+The above example configures grunt to process the template file located at `/Some/file/path.json` with the data object
+
+```json
+{
+	"data": {
+		"SomeDataNeededWithinTheTemplate": "Hello There!"
+	}
+}
+```
+
+Grunt then places the result into `grunt.option('someFilepathJsonKey')` for future use within the grunt run.
+
+**Implementation**
 
 		grunt.niteo.aws.cloudFormation.processTemplate = ->
 
@@ -45,6 +101,41 @@
 			grunt.verbose.writeln "#{@data.key}:"['gray']
 			grunt.verbose.writeln grunt.option(@data.key)['gray']
 			grunt.log.ok "Created template from #{@data.src} and placed it in grunt.option(\"#{@data.key}\")"
+
+createStack
+------------------------------------------
+
+This task handles creating a stack within [AWS Cloud Formation](http://aws.amazon.com/cloudformation/).
+
+- *region* (Required) The [region](http://aws.amazon.com/about-aws/global-infrastructure/) to create the stack in.
+- *name* (Required) The name of the stack
+- *templateKey* (Required) A string that is used with `grunt.option` in order to find the text used for the template. The `processTemplate` method shows us how to get the contents of a template into `grunt.option`.
+- *outputKey* (Required) A string representing where in `grunt.option` to place the JSON metadata of the created stack.  You can use this metadata within other tasks.
+
+**Example**
+```javascript
+grunt.initConfig({
+	processTemplate: {
+		src: '/Some/file/path.json',
+		key: 'someFilePathJsonKey',
+		data: {
+			SomeDataNeededWithinTheTemplate: "Hello There!"
+		}
+	},
+	createStack: {
+		region: "us-east-1",
+		name: "MyStack",
+		templateKey: "someFilePathJsonKey",
+		outputKey: "MyStackMetadata"
+	}
+});
+
+grunt.registerTask('default', [ 'processTemplate', 'createStack' ])
+```
+
+This example uses the output from the `processTemplate` to feed the `createStack` task which creates a new stack within the `us-east-1` region called *MyStack*.  It then stores the metadata of that stack within `grunt.option('MyStackMetadata')`
+
+**Implementation**
 
 		grunt.niteo.aws.cloudFormation.createStack = ->
 
@@ -105,6 +196,43 @@
 					, (progress) ->
 						grunt.log.writeln "#{moment().format()}: #{progress}"['gray']
 
+deleteStack
+------------------------------------------
+
+This task handles deleting a stack from within [AWS Cloud Formation](http://aws.amazon.com/cloudformation/).
+
+- *region* (Required) The [region](http://aws.amazon.com/about-aws/global-infrastructure/) to create the stack in.
+- *name* (Required) The name of the stack
+
+**Example**
+```javascript
+grunt.initConfig({
+	processTemplate: {
+		src: '/Some/file/path.json',
+		key: 'someFilePathJsonKey',
+		data: {
+			SomeDataNeededWithinTheTemplate: "Hello There!"
+		}
+	},
+	createStack: {
+		region: "us-east-1",
+		name: "MyStack",
+		templateKey: "someFilePathJsonKey",
+		outputKey: "MyStackMetadata"
+	},
+	deleteStack: {
+		region: "us-east-1",
+		name: "MyStack"
+	}
+});
+
+grunt.registerTask('default', [ 'processTemplate', 'createStack', 'deleteStack' ]);
+```
+
+This example uses the output from the `processTemplate` to feed the `createStack` task which creates a new stack within the `us-east-1` region called *MyStack*.  It then stores the metadata of that stack within `grunt.option('MyStackMetadata')`.  Finally, the stack is deleted.
+
+**Implementation**
+
 		grunt.niteo.aws.cloudFormation.deleteStack = ->
 
 			done = @async()
@@ -127,6 +255,11 @@
 						done()
 					, (progress) ->
 						grunt.log.writeln "#{moment().format()}: #{progress}"['gray']
+
+Grunt Task Registrations
+------------------------
+
+**Implementations**
 
 		grunt.registerMultiTask 'processTemplate', grunt.niteo.aws.cloudFormation.processTemplate
 		grunt.registerMultiTask 'createStack', grunt.niteo.aws.cloudFormation.createStack

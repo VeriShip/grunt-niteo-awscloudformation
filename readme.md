@@ -1,6 +1,20 @@
 grunt-niteo-awscloudformation
 -----------------------------
+[![Build Status](https://travis-ci.org/NiteoSoftware/grunt-niteo-awscloudformation.svg?branch=master)](https://travis-ci.org/NiteoSoftware/grunt-niteo-awscloudformation)
+[![Build status](https://ci.appveyor.com/api/projects/status/6xdqib09rgnlhomj?svg=true)](https://ci.appveyor.com/project/NiteoBuildBot/grunt-niteo-awscloudformation)
 
-*Work in progress...*
+A [grunt]() plugin that can be used to build and delete stacks for [AWS Cloud Formation](http://aws.amazon.com/cloudformation/).
 
-![To Be Continued...](http://i.giphy.com/ky21Xo5i1CNKU.gif)
+Installation
+------------
+
+```
+npm install grunt-niteo-awscloudformation --save-dev
+```
+
+Usage:
+------
+
+All the documentation for the usage of this plugin is located in the source
+
+- [/lib/awscloudformation.litcoffee](lib/awscloudformation.litcoffee)
