@@ -1,0 +1,7 @@
+lib/
+tests/
+tasks/tests
+node_modules/
+gruntfile.coffee
+.travis.yml
+appveyor.yml
