@@ -11,7 +11,7 @@ deploy:
   email: npm@niteoholdings.com
   skip_cleanup: true
   api_key:
-    secure: "<Unknown>"
+    secure: "QpZ3WQkEq7Lct+I49I8yquVxM4pG9vArvFmIB6Ebil+eSgiqWzwYI+hafMy2Hblr+irfjoLSQltbOenfRPTVJuNa9q45/bRXVeoMAZWubJe9nWSf5DEKFebPQc+Cmn5C2UHZzVaCR7UiPapXyT6mWs+s8VavPsqUgzIVve+eRcg="
   on:
     tags: true
     all_branches: true
