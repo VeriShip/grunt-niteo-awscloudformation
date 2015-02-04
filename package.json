@@ -18,7 +18,8 @@
     "grunt": "^0.4.5",
     "grunt-contrib-coffee": "^0.12.0",
     "grunt-mocha-test": "^0.12.4",
-    "should": "^4.4.2"
+    "should": "^4.4.2",
+    "sinon": "^1.12.2"
   },
   "dependencies": {
     "aws-sdk": "^2.1.4",

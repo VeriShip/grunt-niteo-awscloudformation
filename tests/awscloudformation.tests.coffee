@@ -1,38 +1,42 @@
 Q = require 'q'
 should = require 'should'
 S = require 'string'
+niteo = require 'niteoaws'
+sinon = require 'sinon'
 
 grunt = null
 thisPointer = null
+cloudFormationProviderFactoryStub = null
+cloudFormationProviderStub = null
 
 getGruntStub = ->
 	log:
-		writeln: ->
-		ok: ->
-		error: ->
+		writeln: sinon.stub() 
+		ok: sinon.stub()  #console.log
+		error: sinon.stub() 
 	verbose:
-		writeln: ->
-		ok: ->
+		writeln: sinon.stub() 
+		ok: sinon.stub() 
 	fail:
-		warn: ->
-		fatal: ->
-	fatal: ->
-	warn: ->
+		warn: sinon.stub() 
+		fatal: sinon.stub() 
+	fatal: sinon.stub() 
+	warn: sinon.stub() 
 	_options: { }
 	option: (key, value) ->
 		if value?
 			@_options[key] = value
 		else
 			@_options[key]
-	registerTask: ->
-	registerMultiTask: ->
+	registerTask: sinon.stub() 
+	registerMultiTask: sinon.stub() 
 	task:
-		run: ->
-		clearQueue: ->
+		run: sinon.stub() 
+		clearQueue: sinon.stub() 
 	template:
-		process: ->
+		process: sinon.stub() 
 	file:
-		read: ->
+		read: sinon.stub() 
 
 getThisPointer = ->
 	data: { }
@@ -41,7 +45,7 @@ getThisPointer = ->
 
 loadGrunt = (grunt) ->
 
-	(require '../awscloudformation.js')(grunt)
+	(require '../awscloudformation.js')(grunt, niteo)
 
 beforeEachMethod = ->
 
@@ -53,6 +57,21 @@ beforeEachMethod = ->
 		data: { }
 		async: ->
 			return ->
+
+	cloudFormationProviderStub = 
+		getResource: sinon.stub().returns Q(true)
+		getResources: sinon.stub().returns Q(true)
+		validateTemplate: sinon.stub().returns Q(true)
+		doesStackExist: sinon.stub().returns Q(true)
+		getStackId: sinon.stub().returns Q(true)
+		pollStackStatus: sinon.stub().returns Q(true)
+		createStack: sinon.stub().returns Q(true)
+		deleteStack: sinon.stub().returns Q(true)
+		updateStack: sinon.stub().returns Q(true)
+
+	cloudFormationProviderFactoryStub?.restore()
+	cloudFormationProviderFactoryStub = sinon.stub(niteo.cloudFormationProvider, "factory")
+	cloudFormationProviderFactoryStub.returns cloudFormationProviderStub
 
 describe 'grunt', ->
 
@@ -141,73 +160,51 @@ describe 'grunt', ->
 
 					it 'should call grunt.warn and return if @data.src is undefined.', ->
 
-						called = false
-						grunt.warn = ->
-							called = true
-
 						thisPointer.data.key = ""
 
 						grunt.niteo.aws.cloudFormation.processTemplate.call(thisPointer)
 
-						called.should.be.true
+						grunt.warn.calledOnce.should.be.true
 
 					it 'should call grunt.warn and return if @data.src is null.', ->
-
-						called = false
-						grunt.warn = ->
-							called = true
 
 						thisPointer.data.src = null
 						thisPointer.data.key = ""
 
 						grunt.niteo.aws.cloudFormation.processTemplate.call(thisPointer)
 
-						called.should.be.true
+						grunt.warn.calledOnce.should.be.true
 
 
 					it 'should call grunt.warn and return if @data.key is undefined.', ->
-
-						called = false
-						grunt.warn = ->
-							called = true
 
 						thisPointer.data.src = ""
 
 						grunt.niteo.aws.cloudFormation.processTemplate.call(thisPointer)
 
-						called.should.be.true
+						grunt.warn.calledOnce.should.be.true
 
 					it 'should call grunt.warn and return if @data.key is null.', ->
-
-						called = false
-						grunt.warn = ->
-							called = true
 
 						thisPointer.data.key = null
 						thisPointer.data.src = ""
 
 						grunt.niteo.aws.cloudFormation.processTemplate.call(thisPointer)
 
-						called.should.be.true
+						grunt.warn.calledOnce.should.be.true
 
 					it 'should call grunt.file.read with @data.src.', ->
 
 						thisPointer.data.key = ""
 						thisPointer.data.src = "Some File Path"
 
-						actualSrc = null
-						actualOptions = null
-						grunt.file.read = (file, options) ->
-							actualSrc = file
-							actualOptions = options
 						grunt.option = ->
 							""
 
 						grunt.niteo.aws.cloudFormation.processTemplate.call(thisPointer)
 
-						actualSrc.should.equal "Some File Path"
-						actualOptions.should.eql 
-							encoding: "utf8"
+						grunt.file.read.calledOnce.should.be.true
+						grunt.file.read.alwaysCalledWithExactly("Some File Path", { encoding: "utf8" })
 
 					it 'should call grunt.template.process with the output of grunt.file.read(@data.src).', ->
 
@@ -215,28 +212,23 @@ describe 'grunt', ->
 						thisPointer.data.src = ""
 						thisPointer.data.data = 
 							HelloProperty: "Hello"
-						actualContent = null
-						actualData = null
 
-						grunt.file.read = ->
-							"Some Content"
-						grunt.template.process = (content, data) ->
-							actualContent = content
-							actualData = data
+						grunt.file.read.returns "Some Content"
+						grunt.template.process.returns "Some Template Content"
 
 						grunt.niteo.aws.cloudFormation.processTemplate.call(thisPointer)
 
-						actualContent.should.equal "Some Content"
-						actualData.should.eql
+						grunt.template.process.calledOnce.should.be.true
+						grunt.template.process.alwaysCalledWithExactly("Some Content", 
 							data:
 								HelloProperty: "Hello"
+						)
 
 					it 'should place the result of grunt.template.process into grunt.option(@data.key).', ->
 
 						thisPointer.data.key = "Hi"
 						thisPointer.data.src = ""
-						grunt.template.process = ->
-							"Some Value"
+						grunt.template.process.returns "Some Value"
 
 						grunt.niteo.aws.cloudFormation.processTemplate.call(thisPointer)
 
@@ -247,8 +239,7 @@ describe 'grunt', ->
 						thisPointer.data.key = "Hi!"
 						thisPointer.data.src = ""
 						thisPointer.data.convertToArray = true
-						grunt.template.process = ->
-							"Some\nValue"
+						grunt.template.process.returns "Some\nValue"
 
 						grunt.niteo.aws.cloudFormation.processTemplate.call(thisPointer)
 
@@ -263,18 +254,495 @@ describe 'grunt', ->
 				describe 'createStack', ->
 
 					it 'should call grunt.warn and return if @data.region is undefined.', (done) ->
+
+						#thisPointer.data.region = ""
 						thisPointer.data.name = ""
-						thisPointer.data.template = ""
+						thisPointer.data.templateKey = ""
 						thisPointer.data.outputKey = ""
 						thisPointer.async = ->
-							done
+							return ->
+								grunt.fail.fatal.calledOnce.should.be.true
+								done()
 
 						grunt.niteo.aws.cloudFormation.createStack.call(thisPointer)
 
-					it 'should call grunt.warn and return if @data.region is null.'
-					it 'should call grunt.warn and return if @data.name is undefined.'
-					it 'should call grunt.warn and return if @data.name is null.'
-					it 'should call grunt.warn and return if @data.template is undefined.'
-					it 'should call grunt.warn and return if @data.template is null.'
-					it 'should call grunt.warn and return if @data.outputKey is undefined.'
-					it 'should call grunt.warn and return if @data.outputKey is null.'
+					it 'should call grunt.warn and return if @data.region is null.', (done) ->
+
+						called = false
+						thisPointer.data.region = null
+						thisPointer.data.name = ""
+						thisPointer.data.templateKey = ""
+						thisPointer.data.outputKey = ""
+						thisPointer.async = ->
+							return ->
+								grunt.fail.fatal.calledOnce.should.be.true
+								done()
+
+						grunt.niteo.aws.cloudFormation.createStack.call(thisPointer)
+
+					it 'should call grunt.warn and return if @data.name is undefined.', (done) ->
+
+						called = false
+						thisPointer.data.region = ""
+						#thisPointer.data.name = ""
+						thisPointer.data.templateKey = ""
+						thisPointer.data.outputKey = ""
+						thisPointer.async = ->
+							return ->
+								grunt.fail.fatal.calledOnce.should.be.true
+								done()
+
+						grunt.niteo.aws.cloudFormation.createStack.call(thisPointer)
+						
+					it 'should call grunt.warn and return if @data.name is null.', (done) ->
+
+						called = false
+						thisPointer.data.region = ""
+						thisPointer.data.name = null
+						thisPointer.data.templateKey = ""
+						thisPointer.data.outputKey = ""
+						thisPointer.async = ->
+							return ->
+								grunt.fail.fatal.calledOnce.should.be.true
+								done()
+
+						grunt.niteo.aws.cloudFormation.createStack.call(thisPointer)
+						
+					it 'should call grunt.warn and return if @data.templateKey is undefined.', (done) ->
+
+						called = false
+						thisPointer.data.region = ""
+						thisPointer.data.name = ""
+						#thisPointer.data.templateKey = ""
+						thisPointer.data.outputKey = ""
+						thisPointer.async = ->
+							return ->
+								grunt.fail.fatal.calledOnce.should.be.true
+								done()
+
+						grunt.niteo.aws.cloudFormation.createStack.call(thisPointer)
+						
+					it 'should call grunt.warn and return if @data.templateKey is null.', (done) ->
+
+						called = false
+						thisPointer.data.region = ""
+						thisPointer.data.name = "" 
+						thisPointer.data.templateKey = null 
+						thisPointer.data.outputKey = ""
+						thisPointer.async = ->
+							return ->
+								grunt.fail.fatal.calledOnce.should.be.true
+								done()
+
+						grunt.niteo.aws.cloudFormation.createStack.call(thisPointer)
+						
+					it 'should call grunt.warn and return if @data.outputKey is undefined.', (done) ->
+
+						called = false
+						thisPointer.data.region = ""
+						thisPointer.data.name = "" 
+						thisPointer.data.templateKey = ""
+						#thisPointer.data.outputKey = ""
+						thisPointer.async = ->
+							return ->
+								grunt.fail.fatal.calledOnce.should.be.true
+								done()
+
+						grunt.niteo.aws.cloudFormation.createStack.call(thisPointer)
+						
+					it 'should call grunt.warn and return if @data.outputKey is null.', (done) ->
+
+						called = false
+						thisPointer.data.region = ""
+						thisPointer.data.name = "" 
+						thisPointer.data.templateKey = ""
+						thisPointer.data.outputKey = null
+						thisPointer.async = ->
+							return ->
+								grunt.fail.fatal.calledOnce.should.be.true
+								done()
+
+						grunt.niteo.aws.cloudFormation.createStack.call(thisPointer)
+
+					it 'should create new cloud formation provider with given region.', (done) ->
+
+						thisPointer = 
+							data:
+								region: 'Some Region'
+								name: ""
+								templateKey: ""
+								outputKey: ""
+							async: ->
+								return ->
+									cloudFormationProviderFactoryStub.calledOnce.should.be.true					
+									cloudFormationProviderFactoryStub.alwaysCalledWithExactly 'Some Region'
+									done()
+
+						grunt.niteo.aws.cloudFormation.createStack.call(thisPointer)
+
+					it 'should call grunt.fail.fatal if the value at grunt.option("@data.templateKey") is undefined.', (done) ->
+
+						thisPointer = 
+							data:
+								region: "Some Region"
+								name: ""
+								templateKey: "Some Key"
+								outputKey: ""
+							async: ->
+								return ->
+									grunt.fail.fatal.calledOnce.should.be.true
+									done()
+
+						grunt.niteo.aws.cloudFormation.createStack.call(thisPointer)
+
+					it 'should call grunt.fail.fatal if the value at grunt.option("@data.templateKey") is null.', (done) ->
+
+						thisPointer = 
+							data:
+								region: "Some Region"
+								name: ""
+								templateKey: "Some Key"
+								outputKey: ""
+							async: ->
+								return ->
+									grunt.fail.fatal.calledOnce.should.be.true
+									done()
+
+						grunt.option thisPointer.templateKey, null
+						grunt.niteo.aws.cloudFormation.createStack.call(thisPointer)
+
+					it 'should call doesStackExist with the name of the stack.', (done) ->
+
+						thisPointer = 
+							data:
+								region: "Some Region"
+								name: "Some Name"
+								templateKey: "Some Key"
+								outputKey: ""
+							async: ->
+								return ->
+									cloudFormationProviderStub.doesStackExist.calledOnce.should.be.true					
+									cloudFormationProviderStub.doesStackExist.alwaysCalledWithExactly(thisPointer.data.name).should.be.true
+									done()
+						
+						grunt.option(thisPointer.data.templateKey, "Some Content")
+
+						grunt.niteo.aws.cloudFormation.createStack.call(thisPointer)
+
+					it 'should call grunt.fail.fatal if doesStackExist errors', (done) ->
+
+						thisPointer = 
+							data:
+								region: "Some Region"
+								name: "Some Name"
+								templateKey: "Some Key"
+								outputKey: ""
+							async: ->
+								return ->
+									grunt.fail.fatal.calledOnce.should.be.true
+									grunt.fail.fatal.alwaysCalledWithExactly("Random Failure").should.be.true
+									done()
+
+						grunt.option(thisPointer.data.templateKey, "Some Content")
+						cloudFormationProviderStub.doesStackExist.returns Q.reject("Random Failure")
+
+						grunt.niteo.aws.cloudFormation.createStack.call(thisPointer)
+
+					it 'should call validateTemplate with template content if stack does not exist.', (done) ->
+
+						thisPointer = 
+							data:
+								region: "Some Region"
+								name: "Some Name"
+								templateKey: "Some Key"
+								outputKey: "Some OutputKey"
+							async: ->
+								return ->
+									cloudFormationProviderStub.validateTemplate.calledOnce.should.be.true					
+									cloudFormationProviderStub.validateTemplate.alwaysCalledWithExactly("Some Content").should.be.true
+									done()
+
+						grunt.option(thisPointer.data.templateKey, "Some Content")
+
+						cloudFormationProviderStub.doesStackExist.returns Q(false)
+
+						grunt.niteo.aws.cloudFormation.createStack.call(thisPointer)
+
+					it 'should call grunt.fail.fatal if validateTemplate errors and if stack does not exist.', (done) ->
+
+						thisPointer = 
+							data:
+								region: "Some Region"
+								name: "Some Name"
+								templateKey: "Some Key"
+								outputKey: "Some OutputKey"
+							async: ->
+								return ->
+									grunt.fail.fatal.calledOnce
+									grunt.fail.fatal.alwaysCalledWithExactly("Random Failure").should.be.true
+									done()
+
+						grunt.option(thisPointer.data.templateKey, "Some Content")
+
+						cloudFormationProviderStub.doesStackExist.returns Q(false)
+						cloudFormationProviderStub.validateTemplate.returns Q.reject("Random Failure")
+
+						grunt.niteo.aws.cloudFormation.createStack.call(thisPointer)
+
+					it 'should call createStack with @data.name and template content if stack does not exist.', (done) ->
+
+						thisPointer = 
+							data:
+								region: "Some Region"
+								name: "Some Name"
+								templateKey: "Some Key"
+								outputKey: "Some OutputKey"
+								parameters: "Some Parameters"
+							async: ->
+								return ->
+									cloudFormationProviderStub.createStack.calledOnce.should.be.true					
+									cloudFormationProviderStub.createStack.alwaysCalledWithExactly("Some Name", "Some Content", "Some Parameters").should.be.true
+									done()
+
+						grunt.option(thisPointer.data.templateKey, "Some Content")
+
+						cloudFormationProviderStub.doesStackExist.returns Q(false)
+
+						grunt.niteo.aws.cloudFormation.createStack.call(thisPointer)
+
+					it 'should call grunt.fail.fatal if createStack fails and template content if stack does not exist.', (done) ->
+
+						thisPointer = 
+							data:
+								region: "Some Region"
+								name: "Some Name"
+								templateKey: "Some Key"
+								outputKey: "Some OutputKey"
+								parameters: "Some Parameters"
+							async: ->
+								return ->
+									grunt.fail.fatal.calledOnce
+									grunt.fail.fatal.alwaysCalledWithExactly("Random Failure").should.be.true
+									done()
+
+						grunt.option(thisPointer.data.templateKey, "Some Content")
+
+						cloudFormationProviderStub.doesStackExist.returns Q(false)
+						cloudFormationProviderStub.createStack.returns Q.reject("Random Failure")
+
+						grunt.niteo.aws.cloudFormation.createStack.call(thisPointer)
+
+					it 'should call getStackId with @data.name.', (done) ->
+
+						thisPointer = 
+							data:
+								region: "Some Region"
+								name: "Some Name"
+								templateKey: "Some Key"
+								outputKey: "Some OutputKey"
+								parameters: "Some Parameters"
+							async: ->
+								return ->	
+									cloudFormationProviderStub.getStackId.calledOnce.should.be.true					
+									cloudFormationProviderStub.getStackId.alwaysCalledWithExactly("Some Name").should.be.true
+									done()
+
+						grunt.option(thisPointer.data.templateKey, "Some Content")
+
+						cloudFormationProviderStub.doesStackExist.returns Q(false)
+
+						grunt.niteo.aws.cloudFormation.createStack.call(thisPointer)
+
+					it 'should call grunt.fail.fatal if getStackId fails.', (done) ->
+
+						thisPointer = 
+							data:
+								region: "Some Region"
+								name: "Some Name"
+								templateKey: "Some Key"
+								outputKey: "Some OutputKey"
+								parameters: "Some Parameters"
+							async: ->
+								return ->
+									grunt.fail.fatal.calledOnce
+									grunt.fail.fatal.alwaysCalledWithExactly("Random Failure").should.be.true
+									done()
+
+						grunt.option(thisPointer.data.templateKey, "Some Content")
+
+						cloudFormationProviderStub.getStackId.returns Q.reject("Random Failure")
+
+						grunt.niteo.aws.cloudFormation.createStack.call(thisPointer)
+
+					it 'should call getResource with result of getStackId.', (done) ->
+
+						thisPointer = 
+							data:
+								region: "Some Region"
+								name: "Some Name"
+								templateKey: "Some Key"
+								outputKey: "Some OutputKey"
+								parameters: "Some Parameters"
+							async: ->
+								return ->
+									cloudFormationProviderStub.getResource.calledOnce.should.be.true					
+									cloudFormationProviderStub.getResource.alwaysCalledWithExactly("Stack Id").should.be.true
+									done()
+
+						grunt.option(thisPointer.data.templateKey, "Some Content")
+
+						cloudFormationProviderStub.getStackId.returns Q("Stack Id")
+
+						grunt.niteo.aws.cloudFormation.createStack.call(thisPointer)
+
+					it 'should call grunt.fail.fatal if getResource fails.', (done) ->
+
+						thisPointer = 
+							data:
+								region: "Some Region"
+								name: "Some Name"
+								templateKey: "Some Key"
+								outputKey: "Some OutputKey"
+								parameters: "Some Parameters"
+							async: ->
+								return ->
+									grunt.fail.fatal.calledOnce
+									grunt.fail.fatal.alwaysCalledWithExactly("Random Failure").should.be.true
+									done()
+
+						grunt.option(thisPointer.data.templateKey, "Some Content")
+
+						cloudFormationProviderStub.getResource.returns Q.reject("Random Failure")
+
+						grunt.niteo.aws.cloudFormation.createStack.call(thisPointer)
+
+					it 'should place the result of getResource into grunt.option(@data.outputKey)', (done) ->
+
+						thisPointer = 
+							data:
+								region: "Some Region"
+								name: "Some Name"
+								templateKey: "Some Key"
+								outputKey: "Some OutputKey"
+								parameters: "Some Parameters"
+
+						thisPointer.async = ->
+							return ->
+								grunt.option(thisPointer.data.outputKey).should.equal "ResourceData"
+								done()
+
+						grunt.option(thisPointer.data.templateKey, "Some Content")
+
+						cloudFormationProviderStub.getResource.returns Q("ResourceData")
+
+						grunt.niteo.aws.cloudFormation.createStack.call(thisPointer)
+
+				describe 'deleteStack', ->
+
+					it 'should call grunt.fail.fatal and return if @data.region is undefined.', (done) ->
+
+						#thisPointer.data.region = ""
+						thisPointer.data.name = ""
+						thisPointer.data.templateKey = ""
+						thisPointer.data.outputKey = ""
+						thisPointer.async = ->
+							return ->
+								grunt.fail.fatal.calledOnce.should.be.true
+								done()
+
+						grunt.niteo.aws.cloudFormation.deleteStack.call(thisPointer)	
+
+					it 'should call grunt.fail.fatal and return if @data.region is null.', (done) ->
+
+						thisPointer.data.region = null
+						thisPointer.data.name = ""
+						thisPointer.data.templateKey = ""
+						thisPointer.data.outputKey = ""
+						thisPointer.async = ->
+							return ->
+								grunt.fail.fatal.calledOnce.should.be.true
+								done()
+
+						grunt.niteo.aws.cloudFormation.deleteStack.call(thisPointer)	
+
+					it 'should call grunt.fail.fatal and return if @data.name is undefined.', (done) ->
+
+						thisPointer.data.region = ""
+						#thisPointer.data.name = ""
+						thisPointer.data.templateKey = ""
+						thisPointer.data.outputKey = ""
+						thisPointer.async = ->
+							return ->
+								grunt.fail.fatal.calledOnce.should.be.true
+								done()
+
+						grunt.niteo.aws.cloudFormation.deleteStack.call(thisPointer)
+
+					it 'should call grunt.fail.fatal and return if @data.name is null.', (done) ->
+
+						thisPointer.data.region = ""
+						thisPointer.data.name = null
+						thisPointer.data.templateKey = ""
+						thisPointer.data.outputKey = ""
+						thisPointer.async = ->
+							return ->
+								grunt.fail.fatal.calledOnce.should.be.true
+								done()
+
+						grunt.niteo.aws.cloudFormation.deleteStack.call(thisPointer)			
+
+					it 'should create new cloud formation provider with given region.', (done) ->
+
+						thisPointer = 
+							data:
+								region: 'Some Region'
+								name: ""
+								templateKey: ""
+								outputKey: ""
+							async: ->
+								return ->
+									cloudFormationProviderFactoryStub.calledOnce.should.be.true					
+									cloudFormationProviderFactoryStub.alwaysCalledWithExactly('Some Region').should.be.true
+									done()
+
+						grunt.niteo.aws.cloudFormation.deleteStack.call(thisPointer)
+
+					it 'should call deleteStack with @data.name.', (done) ->
+
+						thisPointer = 
+							data:
+								region: "Some Region"
+								name: "Some Name"
+								templateKey: "Some Key"
+								outputKey: "Some OutputKey"
+								parameters: "Some Parameters"
+							async: ->
+								return ->
+									cloudFormationProviderStub.deleteStack.calledOnce.should.be.true					
+									cloudFormationProviderStub.deleteStack.alwaysCalledWithExactly('Some Name').should.be.true
+									done()
+
+						grunt.option(thisPointer.data.templateKey, "Some Content")
+
+						grunt.niteo.aws.cloudFormation.deleteStack.call(thisPointer)
+
+					it 'should call grunt.fail.fatal if deleteStack fails.', (done) ->
+
+						thisPointer = 
+							data:
+								region: "Some Region"
+								name: "Some Name"
+								templateKey: "Some Key"
+								outputKey: "Some OutputKey"
+								parameters: "Some Parameters"
+							async: ->
+								return ->
+									grunt.fail.fatal.calledOnce.should.be.true
+									grunt.fail.fatal.alwaysCalledWithExactly("Random Error Dude!").should.be.true
+									done()
+
+						grunt.option(thisPointer.data.templateKey, "Some Content")
+
+						cloudFormationProviderStub.deleteStack.returns Q.reject("Random Error Dude!")
+
+						grunt.niteo.aws.cloudFormation.deleteStack.call(thisPointer)

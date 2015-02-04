@@ -3,10 +3,12 @@
 	colors = require 'colors'
 	S = require 'string'
 	path = require 'path'
-	niteoaws = require 'niteoaws'
 	moment = require 'moment'
 
-	module.exports = (grunt) ->
+	module.exports = (grunt, niteoaws) ->
+
+		if not niteoaws?
+			niteoaws = require 'niteoaws'
 
 		if not grunt.niteo?
 			grunt.niteo = { }
@@ -58,8 +60,8 @@
 				done()
 				return
 
-			if not @data.template?
-				grunt.fail.fatal "You need to define a template in order to create a stack."
+			if not @data.templateKey?
+				grunt.fail.fatal "You need to define a template key in order to create a stack."
 				done()
 				return
 
@@ -68,25 +70,25 @@
 				done()
 				return
 
-			niteoawsCF = new niteoaws.cloudFormationProvider.factory @data.region 
+			niteoawsCF = niteoaws.cloudFormationProvider.factory @data.region
 
-			content = grunt.option(@data.template)
+			content = grunt.option(@data.templateKey)
 
 			if not content?
 				grunt.fail.fatal "The template retreived was invalid."
+				done()
+				return
 
 			niteoawsCF.doesStackExist(@data.name)
 				.then (result) =>
-					promise = Q()
 					if not result
 						grunt.log.ok "Stack #{@data.name} does not exist."
-						promise = niteoawsCF.validateTemplate(content)
-						.then =>
-							grunt.log.ok "Verified template."
-							niteoawsCF.createStack(@data.name, content, @data.parameters)
-						.then =>
-							grunt.log.ok "Successfully created stack #{@data.name}"
-					promise
+						niteoawsCF.validateTemplate(content)
+							.then =>
+								grunt.log.ok "Template Validated."
+								niteoawsCF.createStack(@data.name, content, @data.parameters)
+							.then =>
+								grunt.log.ok "Successfully created stack #{@data.name}"
 				.then =>
 					niteoawsCF.getStackId(@data.name)
 				.then (result)=>
