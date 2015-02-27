@@ -360,4 +360,5 @@ Grunt Task Registrations
 
 		grunt.registerMultiTask 'processTemplate', grunt.niteo.aws.cloudFormation.processTemplate
 		grunt.registerMultiTask 'createStack', grunt.niteo.aws.cloudFormation.createStack
+		grunt.registerMultiTask 'updateStack', grunt.niteo.aws.cloudFormation.updateStack
 		grunt.registerMultiTask 'deleteStack', grunt.niteo.aws.cloudFormation.deleteStack
