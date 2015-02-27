@@ -177,7 +177,7 @@ This example uses the output from the `processTemplate` to feed the `createStack
 						niteoawsCF.validateTemplate(content)
 							.then =>
 								grunt.log.ok "Template Validated."
-								niteoawsCF.createStack(@data.name, content, @data.parameters)
+								niteoawsCF.createStack(@data.name, content, @data.parameters, @data.capabilities)
 							.then =>
 								grunt.log.ok "Successfully created stack #{@data.name}"
 				.then =>
