@@ -973,7 +973,7 @@ describe 'grunt', ->
 								parameters: "Some Parameters"
 							async: ->
 								return ->
-									cloudFormationProviderStub.getResource.calledOnce.should.be.true					
+									cloudFormationProviderStub.getResource.calledTwice.should.be.true					
 									cloudFormationProviderStub.getResource.alwaysCalledWithExactly("Stack Id").should.be.true
 									done()
 

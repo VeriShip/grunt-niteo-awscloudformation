@@ -258,7 +258,6 @@ This example uses the output from the `processTemplate` to feed the `updateStack
 			niteoawsCF = niteoaws.cloudFormationProvider.factory @data.region
 
 			content = grunt.option(@data.templateKey)
-			data = @data
 
 			if not content?
 				grunt.fail.fatal "The template retreived was invalid."
@@ -270,8 +269,18 @@ This example uses the output from the `processTemplate` to feed the `updateStack
 					if not result
 						grunt.fail.fatal "Stack #{@data.name} does not exist."
 					else
-						grunt.log.ok "Stack #{@data.name} exists and can be updated."
-						niteoawsCF.validateTemplate(content)
+						grunt.log.ok "Stack #{@data.name} exists, getting prevous meta data."
+						niteoawsCF.getStackId(@data.name)
+						.then (result) =>
+							grunt.log.ok "Successfully retreived the stack id #{result}"
+							niteoawsCF.getResource(result)
+						.then (result) =>
+							grunt.verbose.writeln JSON.stringify(result, null, 4)['gray']
+							grunt.option(@data.outputKey, result)
+							grunt.log.ok "Successfully retreived the stack metadata and placed it into grunt.option(#{@data.outputKey})"
+						.then =>
+							grunt.log.ok "Updating stack #{@data.name}."
+							niteoawsCF.validateTemplate(content)
 							.then =>
 								grunt.log.ok "Template Validated."
 								niteoawsCF.updateStack(@data.name, content, @data.parameters, @data.capabilities)
@@ -289,15 +298,7 @@ This example uses the output from the `processTemplate` to feed the `updateStack
 						done()
 					, (err) ->
 						if err.message == "No updates are to be performed."
-							niteoawsCF.getStackId(data.name)
-								.then (result) =>
-									grunt.log.ok "Successfully retreived the stack id #{result}"
-									niteoawsCF.getResource(result)
-								.done (result) =>
-									grunt.verbose.writeln JSON.stringify(result, null, 4)['gray']
-									grunt.option(data.outputKey, result)
-									grunt.log.ok "Successfully retreived the stack metadata and placed it into grunt.option(#{@data.outputKey})"
-									grunt.log.writeln err
+							grunt.log.writeln err
 						else 
 							grunt.fail.fatal err
 						done()
