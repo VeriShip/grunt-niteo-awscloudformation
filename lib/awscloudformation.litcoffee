@@ -288,7 +288,7 @@ This example uses the output from the `processTemplate` to feed the `updateStack
 						grunt.log.ok "Successfully retreived the stack metadata and placed it into grunt.option(#{@data.outputKey})"
 						done()
 					, (err) ->
-						if err.message == "No updates are to be performed." then grunt.log.info err else grunt.fail.fatal err
+						if err.message == "No updates are to be performed." then grunt.log.writeln err else grunt.fail.fatal err
 						done()
 					, (progress) ->
 						grunt.log.writeln "#{moment().format()}: #{progress}"['gray']
