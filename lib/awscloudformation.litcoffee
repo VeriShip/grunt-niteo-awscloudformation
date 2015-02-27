@@ -288,7 +288,18 @@ This example uses the output from the `processTemplate` to feed the `updateStack
 						grunt.log.ok "Successfully retreived the stack metadata and placed it into grunt.option(#{@data.outputKey})"
 						done()
 					, (err) ->
-						if err.message == "No updates are to be performed." then grunt.log.writeln err else grunt.fail.fatal err
+						if err.message == "No updates are to be performed."
+							niteoawsCF.getStackId(@data.name)
+								.then (result) =>
+									grunt.log.ok "Successfully retreived the stack id #{result}"
+									niteoawsCF.getResource(result)
+								.done (result) =>
+									grunt.verbose.writeln JSON.stringify(result, null, 4)['gray']
+									grunt.option(@data.outputKey, result)
+									grunt.log.ok "Successfully retreived the stack metadata and placed it into grunt.option(#{@data.outputKey})"
+									grunt.log.writeln err
+						else 
+							grunt.fail.fatal err
 						done()
 					, (progress) ->
 						grunt.log.writeln "#{moment().format()}: #{progress}"['gray']
