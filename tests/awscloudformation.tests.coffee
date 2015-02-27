@@ -498,10 +498,11 @@ describe 'grunt', ->
 								templateKey: "Some Key"
 								outputKey: "Some OutputKey"
 								parameters: "Some Parameters"
+								capabilities: "Some Capabilities"
 							async: ->
 								return ->
 									cloudFormationProviderStub.createStack.calledOnce.should.be.true					
-									cloudFormationProviderStub.createStack.alwaysCalledWithExactly("Some Name", "Some Content", "Some Parameters").should.be.true
+									cloudFormationProviderStub.createStack.alwaysCalledWithExactly("Some Name", "Some Content", "Some Parameters", "Some Capabilities").should.be.true
 									done()
 
 						grunt.option(thisPointer.data.templateKey, "Some Content")
