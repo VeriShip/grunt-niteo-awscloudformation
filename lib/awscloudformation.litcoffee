@@ -258,7 +258,7 @@ This example uses the output from the `processTemplate` to feed the `updateStack
 			niteoawsCF = niteoaws.cloudFormationProvider.factory @data.region
 
 			content = grunt.option(@data.templateKey)
-			name = @data.name
+			data = @data
 
 			if not content?
 				grunt.fail.fatal "The template retreived was invalid."
@@ -289,13 +289,13 @@ This example uses the output from the `processTemplate` to feed the `updateStack
 						done()
 					, (err) ->
 						if err.message == "No updates are to be performed."
-							niteoawsCF.getStackId(name)
+							niteoawsCF.getStackId(data.name)
 								.then (result) =>
 									grunt.log.ok "Successfully retreived the stack id #{result}"
 									niteoawsCF.getResource(result)
 								.done (result) =>
 									grunt.verbose.writeln JSON.stringify(result, null, 4)['gray']
-									grunt.option(@data.outputKey, result)
+									grunt.option(data.outputKey, result)
 									grunt.log.ok "Successfully retreived the stack metadata and placed it into grunt.option(#{@data.outputKey})"
 									grunt.log.writeln err
 						else 
