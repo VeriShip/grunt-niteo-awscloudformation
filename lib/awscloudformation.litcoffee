@@ -265,45 +265,43 @@ This example uses the output from the `processTemplate` to feed the `updateStack
 				return
 
 			niteoawsCF.doesStackExist(@data.name)
-				.then (result) =>
-					if not result
-						grunt.fail.fatal "Stack #{@data.name} does not exist."
-					else
-						grunt.log.ok "Stack #{@data.name} exists, getting prevous meta data."
-						niteoawsCF.getStackId(@data.name)
-						.then (result) =>
-							grunt.log.ok "Successfully retreived the stack id #{result}"
-							niteoawsCF.getResource(result)
-						.then (result) =>
-							grunt.verbose.writeln JSON.stringify(result, null, 4)['gray']
-							grunt.option(@data.outputKey, result)
-							grunt.log.ok "Successfully retreived the stack metadata and placed it into grunt.option(#{@data.outputKey})"
-						.then =>
-							grunt.log.ok "Updating stack #{@data.name}."
-							niteoawsCF.validateTemplate(content)
-							.then =>
-								grunt.log.ok "Template Validated."
-								niteoawsCF.updateStack(@data.name, content, @data.parameters, @data.capabilities)
-							.then =>
-								grunt.log.ok "Successfully updated stack #{@data.name}"
-				.then =>
-					niteoawsCF.getStackId(@data.name)
-				.then (result) =>
-					grunt.log.ok "Successfully retreived the stack id #{result}"
-					niteoawsCF.getResource(result)
-				.done (result) =>
-						grunt.verbose.writeln JSON.stringify(result, null, 4)['gray']
-						grunt.option(@data.outputKey, result)
-						grunt.log.ok "Successfully retreived the stack metadata and placed it into grunt.option(#{@data.outputKey})"
-						done()
-					, (err) ->
-						if err.message == "No updates are to be performed."
-							grunt.log.writeln err
-						else 
-							grunt.fail.fatal err
-						done()
-					, (progress) ->
-						grunt.log.writeln "#{moment().format()}: #{progress}"['gray']
+			    .then (result) =>
+			        if result
+			            grunt.log.ok "Stack #{@data.name} does not exist."
+			            niteoawsCF.validateTemplate(content)
+			                .then =>
+			                    grunt.log.ok "Template Validated."
+			                    deferred = Q.defer()
+			                    niteoawsCF.updateStack(@data.name, content, @data.parameters, @data.capabilities)
+			                        .done((success) ->
+			                                deferred.resolve()
+			                            ,(err) ->
+			                                if(err.message == "No updates are to be performed.")
+			                                    grunt.log.ok "There were no updates to be performed."
+			                                    deferred.resolve();
+			                                else
+			                                    deferred.reject(err);
+			                            , (progress) ->
+			                                deferred.notify(progress)
+			                        )
+			                    deferred.promise
+			        else
+			            grunt.fail.fatal "The stack #{@data.name} does not exist."
+			    .then =>
+			        niteoawsCF.getStackId(@data.name)
+			    .then (result)=>
+			        grunt.log.ok "Successfully retreived the stack id #{result}"
+			        niteoawsCF.getResource(result)
+			    .done (result) =>
+			            grunt.verbose.writeln JSON.stringify(result, null, 4)['gray']
+			            grunt.option(@data.outputKey, result)
+			            grunt.log.ok "Successfully retreived the stack metadata and placed it into grunt.option(#{@data.outputKey})"
+			            done()
+			        , (err) ->
+			            grunt.fail.fatal err
+			            done()
+			        , (progress) ->
+			            grunt.log.writeln "#{moment().format()}: #{progress}"['gray']
 
 deleteStack
 ------------------------------------------
@@ -352,7 +350,7 @@ This example uses the output from the `processTemplate` to feed the `createStack
 			if not @data.name?
 				grunt.fail.fatal "You need to define a stack name in order to create a stack."
 
-			niteoawsCF = new niteoaws.cloudFormationProvider.factory @data.region 
+			niteoawsCF = new niteoaws.cloudFormationProvider.factory @data.region
 
 			niteoawsCF.deleteStack(@data.name)
 				.done (result) ->
