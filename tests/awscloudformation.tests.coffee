@@ -920,6 +920,27 @@ describe 'grunt', ->
 
 						grunt.niteo.aws.cloudFormation.updateStack.call(thisPointer)
 
+					it 'should succeed if updateStack fails with "No updates are to be performed."', (done) ->
+
+					    thisPointer =
+					        data:
+					            region: "Some Region"
+					            name: "Some Name"
+					            templateKey: "Some Key"
+					            outputKey: "Some OutputKey"
+					            parameters: "Some Parameters"
+					        async: ->
+					            return ->
+					                grunt.fail.fatal.calledOnce.should.be.false
+					                done()
+
+					    grunt.option(thisPointer.data.templateKey, "Some Content")
+
+					    cloudFormationProviderStub.doesStackExist.returns Q(true)
+					    cloudFormationProviderStub.updateStack.returns Q.reject({message: "No updates are to be performed."})
+
+					    grunt.niteo.aws.cloudFormation.updateStack.call(thisPointer)
+
 					it 'should call getStackId with @data.name.', (done) ->
 
 						thisPointer =
