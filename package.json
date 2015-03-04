@@ -1,6 +1,6 @@
 {
   "name": "grunt-niteo-awscloudformation",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "A grunt plugin to help manipulate AWS Cloud Formation stacks",
   "scripts": {
     "test": "grunt"
