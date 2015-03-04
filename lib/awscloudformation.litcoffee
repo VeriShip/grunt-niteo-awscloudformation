@@ -177,7 +177,7 @@ This example uses the output from the `processTemplate` to feed the `createStack
 						niteoawsCF.validateTemplate(content)
 							.then =>
 								grunt.log.ok "Template Validated."
-								niteoawsCF.createStack(@data.name, content, @data.parameters)
+								niteoawsCF.createStack(@data.name, content, @data.parameters, @data.capabilities)
 							.then =>
 								grunt.log.ok "Successfully created stack #{@data.name}"
 				.then =>
@@ -195,6 +195,113 @@ This example uses the output from the `processTemplate` to feed the `createStack
 						done()
 					, (progress) ->
 						grunt.log.writeln "#{moment().format()}: #{progress}"['gray']
+
+updateStack
+------------------------------------------
+
+This task handles updating a stack within [AWS Cloud Formation](http://aws.amazon.com/cloudformation/).
+
+- *region* (Required) The [region](http://aws.amazon.com/about-aws/global-infrastructure/) to update the stack in.
+- *name* (Required) The name of the stack
+- *templateKey* (Required) A string that is used with `grunt.option` in order to find the text used for the template. The `processTemplate` method shows us how to get the contents of a template into `grunt.option`.
+- *outputKey* (Required) A string representing where in `grunt.option` to place the JSON metadata of the updated stack.  You can use this metadata within other tasks.
+
+**Example**
+```javascript
+grunt.initConfig({
+	processTemplate: {
+		src: '/Some/file/path.json',
+		key: 'someFilePathJsonKey',
+		data: {
+			SomeDataNeededWithinTheTemplate: "Hello There!"
+		}
+	},
+	updateStack: {
+		region: "us-east-1",
+		name: "MyStack",
+		templateKey: "someFilePathJsonKey",
+		outputKey: "MyStackMetadata"
+	}
+});
+
+grunt.registerTask('default', [ 'processTemplate', 'updateStack' ])
+```
+
+This example uses the output from the `processTemplate` to feed the `updateStack` task which updates an existing stack within the `us-east-1` region called *MyStack*.  It then stores the metadata of that stack within `grunt.option('MyStackMetadata')`
+
+**Implementation**
+
+		grunt.niteo.aws.cloudFormation.updateStack = ->
+
+			done = @async()
+
+			if not @data.region?
+				grunt.fail.fatal "You need to define a region in order to create a stack."
+				done()
+				return
+
+			if not @data.name?
+				grunt.fail.fatal "You need to define a stack name in order to create a stack."
+				done()
+				return
+
+			if not @data.templateKey?
+				grunt.fail.fatal "You need to define a template key in order to create a stack."
+				done()
+				return
+
+			if not @data.outputKey?
+				grunt.fail.fatal "You need to define a key in order to store the stack metadata once it's updated."
+				done()
+				return
+
+			niteoawsCF = niteoaws.cloudFormationProvider.factory @data.region
+
+			content = grunt.option(@data.templateKey)
+
+			if not content?
+				grunt.fail.fatal "The template retreived was invalid."
+				done()
+				return
+
+			niteoawsCF.doesStackExist(@data.name)
+			    .then (result) =>
+			        if result
+			            grunt.log.ok "Stack #{@data.name} does not exist."
+			            niteoawsCF.validateTemplate(content)
+			                .then =>
+			                    grunt.log.ok "Template Validated."
+			                    deferred = Q.defer()
+			                    niteoawsCF.updateStack(@data.name, content, @data.parameters, @data.capabilities)
+			                        .done((success) ->
+			                                deferred.resolve()
+			                            ,(err) ->
+			                                if(err.message == "No updates are to be performed.")
+			                                    grunt.log.ok "There were no updates to be performed."
+			                                    deferred.resolve();
+			                                else
+			                                    deferred.reject(err);
+			                            , (progress) ->
+			                                deferred.notify(progress)
+			                        )
+			                    deferred.promise
+			        else
+			            grunt.fail.fatal "The stack #{@data.name} does not exist."
+			    .then =>
+			        niteoawsCF.getStackId(@data.name)
+			    .then (result)=>
+			        grunt.log.ok "Successfully retreived the stack id #{result}"
+			        niteoawsCF.getResource(result)
+			    .done (result) =>
+			            grunt.verbose.writeln JSON.stringify(result, null, 4)['gray']
+			            grunt.option(@data.outputKey, result)
+			            grunt.log.ok "Successfully retreived the stack metadata and placed it into grunt.option(#{@data.outputKey})"
+			            done()
+			        , (err) ->
+			            grunt.fail.fatal err
+			            done()
+			        , (progress) ->
+			            grunt.log.writeln "#{moment().format()}: #{progress}"['gray']
 
 deleteStack
 ------------------------------------------
@@ -243,7 +350,7 @@ This example uses the output from the `processTemplate` to feed the `createStack
 			if not @data.name?
 				grunt.fail.fatal "You need to define a stack name in order to create a stack."
 
-			niteoawsCF = new niteoaws.cloudFormationProvider.factory @data.region 
+			niteoawsCF = new niteoaws.cloudFormationProvider.factory @data.region
 
 			niteoawsCF.deleteStack(@data.name)
 				.done (result) ->
@@ -263,4 +370,5 @@ Grunt Task Registrations
 
 		grunt.registerMultiTask 'processTemplate', grunt.niteo.aws.cloudFormation.processTemplate
 		grunt.registerMultiTask 'createStack', grunt.niteo.aws.cloudFormation.createStack
+		grunt.registerMultiTask 'updateStack', grunt.niteo.aws.cloudFormation.updateStack
 		grunt.registerMultiTask 'deleteStack', grunt.niteo.aws.cloudFormation.deleteStack
