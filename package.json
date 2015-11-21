@@ -3,11 +3,11 @@
   "version": "0.0.2",
   "description": "A grunt plugin to help manipulate AWS Cloud Formation stacks",
   "scripts": {
-    "test": "grunt"
+    "build": "grunt"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/NiteoSoftware/grunt-niteo-awscloudformation.git"
+    "url": "https://github.com/VeriShip/grunt-niteo-awscloudformation.git"
   },
   "engines": {
     "node": ">0.8.0"
@@ -16,8 +16,10 @@
   "license": "MIT",
   "devDependencies": {
     "grunt": "^0.4.5",
+    "grunt-cli": "^0.1.13",
     "grunt-contrib-coffee": "^0.12.0",
     "grunt-mocha-test": "^0.12.4",
+    "mocha": "^2.3.4",
     "should": "^4.4.2",
     "sinon": "^1.12.2"
   },
